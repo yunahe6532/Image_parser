@@ -8,7 +8,7 @@ Header = { #이미지 시그니처 해더 저장용 디렉터리
 }
 Footer = {
     0xFFD9: "JPG",
-    0x4945: "PNG",
+    0x49454E44: "PNG",
     0x003B: "GIF",
 }
 reverse_H = {
@@ -18,7 +18,7 @@ reverse_H = {
 }
 reverse_F ={
     "JPG": "FFD9",
-    "PNG": "4945",
+    "PNG": "49454E44",
     "GIF": "003B",     
 }
 
@@ -43,15 +43,6 @@ def File_info(part): # 파일 정보 출력 함수
         print("*Img start No. =  %d" % part[i][4])
         print("*Img end No.   =  %d" % part[i][5])
         
-def find_Header(sign,i): #파일 시그니처 해더 찾는 함수
-    while(1):
-        for hd in Header: 
-            cmp = format((struct.unpack('>L',sign[i:i+4])[0]),'X')
-            if reverse_H[Header[hd]] == cmp:
-                F_type = Header[hd]
-                start = i
-                return (F_type,cmp,start,i)
-        i = i + 1
          
 def img_carve(name,part,n): #이미지 추출 함수
     while(1):
@@ -73,28 +64,48 @@ def img_carve(name,part,n): #이미지 추출 함수
             print("Please enter a valid list number")
             pass
            
-    
+def find_Header(sign,i): #파일 시그니처 해더 찾는 함수
+    while(i < len(sign)):
+        try:
+            for hd in Header: 
+                cmp = format((struct.unpack('>L',sign[i:i+4])[0]),'X')
+                if reverse_H[Header[hd]] == cmp:
+                    F_type = Header[hd]
+                    start = i
+                    #print(F_type,cmp,start,i)
+                    return (F_type,cmp,start,i)
+            i = i + 1
+        except Exception as e:    # 예외가 발생했을 때 실행됨
+            i = i + 1
+            pass
     
 def find_footer(sign): #파일 시그니처 푸터 찾는 함수
     part = []
     start = 0
     i = 0
     F_type,hd,start, i = find_Header(sign,i)
-    for i in range(i,len(sign)):
+    while(i < len(sign)):
         try:
-            cmp = format((struct.unpack('>H',sign[i:i+2])[0]),'X')
-            if reverse_F[F_type] == cmp:
-                size = SzieCalc(i-start)
-                part.extend([[F_type,size,hd,cmp,start,i]])
-                break
-                
+            F_type,hd,start, i = find_Header(sign,i)
+            while(1):
+                    i = i + 1
+                    if F_type == "PNG":
+                        cmp = format((struct.unpack('>L',sign[i:i+4])[0]),'X')
+                    else:
+                        cmp = format((struct.unpack('>H',sign[i:i+2])[0]),'X')
+                    if reverse_F[F_type] == cmp:
+                        size = SzieCalc(i-start)
+                        part.extend([[F_type,size,hd,cmp,start,i]])
+                        break
+                       
         except Exception as e:    # 예외가 발생했을 때 실행됨
-           pass
+            i = i + 1
+            pass
     return part
      
 
 if __name__ == '__main__':  #첫 실행 함수 (메인함수)
-    name = "laptop.png" #숨겨진 파일을 찾을 파일 설정 (추후에 입력해서 찾거나 드래그엔 드롭으로 바로 찾게끔 
+    name = "apeach.png" #숨겨진 파일을 찾을 파일 설정 (추후에 입력해서 찾거나 드래그엔 드롭으로 바로 찾게끔 
     f = open(name, "rb")   #변경 예정)
     f.seek(0)               #파일 맨 첫번째 위치로 이동
     sign = f.read()         #전체 파일 정보 저장
@@ -106,3 +117,6 @@ if __name__ == '__main__':  #첫 실행 함수 (메인함수)
         img_carve(name,part,len(part)) #이미지 추출 함수로 이동
     else:
         print("IMG NOT Found..") #이미지를 못찾았으면 종료
+        
+        
+        
